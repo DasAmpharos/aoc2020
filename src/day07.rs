@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 use regex::{Captures, Regex};
 
 pub fn find_solution() {
-    let contents = fs::read_to_string("input/day07.txt")
+    let contents = fs::read_to_string("input/day07-test.txt")
         .expect("Something went wrong reading the file");
 
     lazy_static! {
@@ -26,7 +26,7 @@ pub fn find_solution() {
         ),
     );
     println!("{:?}", collect_policies(&policy_registry, "shiny gold").len());
-    println!("{:?}", get_required_bags(&policy_registry, "shiny gold"));
+    println!("{:?}", test("shiny gold", 1, &policy_registry));
 }
 
 #[derive(Clone, Debug)]
@@ -87,12 +87,12 @@ fn collect_policies(
     policy_registry: &HashMap<String, HashMap<String, i32>>,
     color: &str,
 ) -> HashSet<String> {
-    let mut visited = HashSet::<String>::new();
     let mut colors = HashSet::<String>::new();
+    let mut visited = HashSet::<String>::new();
     colors.insert(String::from(color));
     loop {
         let policies = colors.iter()
-            .flat_map(|it| collect_policies_aux(policy_registry, &visited, it))
+            .flat_map(|it| collect_policies_aux(policy_registry, it))
             .filter(|it| it != color)
             .collect::<HashSet<String>>();
         policies.iter().for_each(|it| { visited.insert(it.clone()); });
@@ -104,48 +104,73 @@ fn collect_policies(
 
 fn collect_policies_aux(
     policy_registry: &HashMap<String, HashMap<String, i32>>,
-    visited: &HashSet<String>,
     color: &str,
 ) -> HashSet<String> {
     policy_registry.into_iter()
         .filter(|it| it.1.contains_key(color))
         .map(|it| it.0.clone())
-        .filter(|it| !visited.contains(it))
         .collect::<HashSet<String>>()
 }
 
-fn get_required_bags(
-    policy_registry: &HashMap<String, HashMap<String, i32>>,
-    color: &str,
-) -> i32 {
-    let mut sum = 0;
-    let mut visited = HashSet::<String>::new();
-    let mut bags = get_required_bags_aux(policy_registry, &visited, color);
-    visited.insert(String::from(color));
-
-    loop {
-        sum += bags.1;
-        bags.0.into_iter()
-            .map(|it| get_required_bags_aux(policy_registry, &visited, it.as_str()))
-            .fold((Vec::<String>::new(), 0), |mut acc, it| {
-
-            });
-        break;
-    }
-    0
-}
+// fn get_required_bags(
+//     policy_registry: &HashMap<String, HashMap<String, i32>>,
+//     color: &str,
+//     quantity: i32,
+// ) -> i32 {
+//     let (mut bags, mut sum) = get_required_bags_aux(policy_registry, color, quantity);
+//     loop {
+//         bags = bags.into_iter()
+//             .filter(|it| !it.is_empty())
+//             .flat_map(|it| {
+//                 let aux = get_required_bags_aux(policy_registry, it.as_str());
+//                 sum += aux.1;
+//                 aux.0
+//             })
+//             .collect::<Vec<String>>();
+//         if bags.is_empty() { break; }
+//     }
+//     sum
+// }
 
 fn get_required_bags_aux(
     policy_registry: &HashMap<String, HashMap<String, i32>>,
-    visited: &HashSet<String>,
     color: &str,
-) -> (Vec<String>, i32) {
-    let policy = &policy_registry[&String::from(color)];
-    policy.into_iter()
-        .filter(|it| !visited.contains(it.0.as_str()))
-        .fold((Vec::<String>::new(), 0), |mut acc, it| {
-            acc.0.push(it.0.clone());
-            acc.1 += it.1;
+) -> (Vec<(String, i32)>, i32) {
+    let mut sum = 0;
+    let bags = (&policy_registry[&String::from(color)]).into_iter()
+        .fold(Vec::<(String, i32)>::new(), |mut acc, it| {
+            sum += calculate_required_bags(policy_registry, color, *it.1);
+            acc.push((it.0.clone(), *it.1));
             acc
-        })
+        });
+    (bags, sum)
+}
+
+fn test(
+    color: &str,
+    quantity: i32,
+    policy_registry: &HashMap<String, HashMap<String, i32>>,
+) -> i32 {
+    let mut count = HashMap::<String, i32>::new();
+    let policy = &policy_registry[&String::from(color)];
+    let child_bags_total: i32 = policy.values().sum();
+    let mut sum = quantity + (quantity * child_bags_total);
+    if child_bags_total != 0 {
+        sum += policy.iter()
+            .map(|it| test(it.0.as_str(), *it.1, policy_registry))
+            .sum::<i32>()
+    }
+    sum
+}
+
+fn calculate_required_bags(
+    policy_registry: &HashMap<String, HashMap<String, i32>>,
+    color: &str,
+    quantity: i32,
+) -> i32 {
+    let policy = &policy_registry[&String::from(color)];
+    let sum: i32 = policy.iter()
+        .map(|it| it.1)
+        .sum();
+    quantity + (quantity * sum)
 }

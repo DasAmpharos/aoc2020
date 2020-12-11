@@ -9,6 +9,7 @@ mod day06;
 mod day07;
 mod day08;
 mod day09;
+mod day10;
 
 fn main() {
     // day01::find_solution();
@@ -19,5 +20,6 @@ fn main() {
     // day06::find_solution();
     // day07::find_solution();
     // day08::find_solution();
-    day09::find_solution();
+    // day09::find_solution();
+    day10::find_solution();
 }
